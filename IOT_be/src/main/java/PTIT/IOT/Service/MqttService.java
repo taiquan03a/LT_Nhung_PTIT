@@ -1,68 +1,100 @@
 package PTIT.IOT.Service;
 
-import PTIT.IOT.Model.Device;
-import PTIT.IOT.Repository.DeviceRepository;
-import org.eclipse.paho.client.mqttv3.MqttClient;
-import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
-import org.eclipse.paho.client.mqttv3.MqttException;
-import org.eclipse.paho.client.mqttv3.MqttMessage;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.eclipse.paho.client.mqttv3.*;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 import org.json.JSONObject;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-
-import java.time.LocalDateTime;
-
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Random;
 
 @Service
 public class MqttService {
+    private static final String BROKER_URL = "tcp:172.11.46.241:2003";
+    private static final String CLIENT_ID = "springBootClient";
+    private static final String USERNAME = "taiquan";
+    private static final String PASSWORD = "b21dccn614";
+    private static final String TOPIC = "wind/speed";
+
     private MqttClient client;
-    final private DeviceRepository deviceRepository;
-    private double latestWindSpeed = 0.0;
+    private final Random random = new Random();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public MqttService(DeviceRepository deviceRepository) throws MqttException {
-        this.deviceRepository = deviceRepository;
+//    public MqttService() {
+//        connectToBroker();
+//    }
+//
+//    private void connectToBroker() {
+//        try {
+//            client = new MqttClient(BROKER_URL, CLIENT_ID, new MemoryPersistence());
+//            MqttConnectOptions options = new MqttConnectOptions();
+//            options.setUserName(USERNAME);
+//            options.setPassword(PASSWORD.toCharArray());
+//            options.setCleanSession(true);
+//            options.setAutomaticReconnect(true);
+//
+//            client.connect(options);
+//            System.out.println("Connected to MQTT Broker!");
+//
+//            subscribeToTopic();
+//        } catch (MqttException e) {
+//            System.err.println("MQTT Connection Failed: " + e.getMessage());
+//            e.printStackTrace();
+//        }
+//    }
 
-        String broker = "tcp://172.20.10.3:2003";
-        String clientId = "springBootClient";
-        String username = "taiquan";
-        String password = "b21dccn614";
+//    private void subscribeToTopic() {
+//        try {
+//            client.subscribe(TOPIC, (topic, message) -> {
+//                String payload = new String(message.getPayload());
+//                System.out.println("Received message: " + payload);
+//                try {
+//                    JSONObject jsonObject = new JSONObject(payload);
+//                    double windSpeed = jsonObject.getDouble("wind_speed");
+//                    System.out.println("Wind Speed Received: " + windSpeed);
+//                    FirebaseService.pushDataToFirebase(windSpeed);
+//                } catch (Exception e) {
+//                    System.err.println("Error processing received message: " + e.getMessage());
+//                    e.printStackTrace();
+//                }
+//            });
+//        } catch (MqttException e) {
+//            System.err.println("Error subscribing to topic: " + e.getMessage());
+//            e.printStackTrace();
+//        }
+//    }
+@Scheduled(fixedRate = 1000) // 5 giây tạo một giá trị mới
+public void generateWindSpeed() {
+    double windSpeed = 5 + (random.nextDouble() * 45); // 5 - 50 m/s
+    windSpeed = Math.round(windSpeed * 100.0) / 100.0; // Làm tròn đến 2 chữ số thập phân
 
-
-        // Tạo MQTT Connect Options
-        MqttConnectOptions options = new MqttConnectOptions();
-        options.setUserName(username);
-        options.setPassword(password.toCharArray());
-
-        // Khởi tạo MqttClient và kết nối
-        client = new MqttClient(broker, clientId, new MemoryPersistence());
-        client.connect(options);
-
-        // Đăng ký để nhận thông điệp
-        client.subscribe("wind/speed", (topic, message) -> {
-            String payload = new String(message.getPayload());
-            System.out.println("Received message: " + payload);
-            try {
-                // Chuyển chuỗi JSON sang JSONObject
-                JSONObject jsonObject = new JSONObject(payload);
-                // Lấy giá trị từ JSONObject
-                double windSpeed = jsonObject.getDouble("wind_speed");
-                System.out.println(windSpeed);
-                // Đẩy dữ liệu lên Firebase
-                FirebaseService.pushDataToFirebase(windSpeed);
-                latestWindSpeed = windSpeed;
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        });
-    }
-    @Scheduled(fixedRate = 300000) // 300.000ms = 5 phút
-    public void saveLatestWindSpeedToDatabase() {
-        Device windSpeedEntity = new Device();
-        windSpeedEntity.setSpeed(String.valueOf(latestWindSpeed));
-        windSpeedEntity.setTime(LocalDateTime.now());
-        deviceRepository.save(windSpeedEntity);
-        System.out.println("Saved latest wind speed: " + latestWindSpeed + " m/s to MySQL.");
-    }
+    System.out.println("Wind Speed Generated: " + windSpeed);
+    FirebaseService.pushDataToFirebase(windSpeed);
 }
 
+//    @Scheduled(fixedRate = 2000)
+//    public void publishRandomWindSpeed() {
+//        try {
+//            if (client.isConnected()) {
+//                double windSpeed = Math.round((random.nextDouble() * 20) * 100.0) / 100.0;
+//                Map<String, Object> payload = new HashMap<>();
+//                payload.put("wind_speed", windSpeed);
+//                String messageString = objectMapper.writeValueAsString(payload);
+//
+//                MqttMessage message = new MqttMessage(messageString.getBytes());
+//                message.setQos(1);
+//                client.publish(TOPIC, message);
+//
+//                System.out.println("Sent: " + messageString);
+//            } else {
+//                System.err.println("MQTT Client is not connected! Reconnecting...");
+//                connectToBroker();
+//            }
+//        } catch (Exception e) {
+//            System.err.println("Error publishing message: " + e.getMessage());
+//            e.printStackTrace();
+//        }
+//    }
+}

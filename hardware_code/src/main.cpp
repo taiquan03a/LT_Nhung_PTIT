@@ -8,8 +8,8 @@ const char *password = "123456789";
 const char *mqttServer = "172.20.10.3"; // Địa chỉ MQTT Broker (VD: Mosquitto, EMQX)
 const int mqttPort = 2003;
 const char *mqttTopic = "wind/speed";
-const char *mqtt_username = "taiquan";   // MQTT username
-const char *mqtt_password = "b21dccn614"; // MQTT password
+const char *mqtt_username = "taiquan";    // MQTT username
+const char *mqtt_password = "b21dccn614"; // MQTT password172.20.10.3
 
 WiFiClient espClient;
 PubSubClient client(espClient);
